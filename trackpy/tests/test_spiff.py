@@ -7,7 +7,7 @@ from trackpy.tests.common import StrictTestCase, sort_positions
 import trackpy as tp
 import numpy as np
 
-class MyTestCase(StrictTestCase):
+class TestSpiff(StrictTestCase):
     def _test_spiff(self, ndim):
         # Draw an image with 200 features and some noise
         expected, image = draw_array(200, 2, noise_level=1, ndim=ndim)
