@@ -43,7 +43,8 @@ def apply_spiff_correction(f: DataFrame, pos_columns=None,
     tracking features across multiple frames (e.g. in a video), consider locating
     the features across all frames first (using tp.batch) before applying this function
     (as opposed to applying this function for each individual frame).
-    If f contains less than 100 features, f is returned as-is, due to lack of data.
+    If f contains fewer than ``MIN_FEATURES`` features, f is returned as-is,
+    due to lack of data.
     """
     if len(f) < MIN_FEATURES:
         if warn_if_insufficient:
