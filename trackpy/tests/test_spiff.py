@@ -1,6 +1,6 @@
 import unittest
 
-from build.lib.trackpy.utils import default_pos_columns
+from trackpy.utils import default_pos_columns
 from trackpy.artificial import draw_array
 from trackpy.spiff import apply_spiff_correction
 from trackpy.tests.common import StrictTestCase, sort_positions

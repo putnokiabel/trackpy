@@ -21,7 +21,7 @@ def apply_spiff_correction(f: DataFrame, pos_columns=None) -> DataFrame:
     (SPIFF) algorithm" by Yuval et al.
     The accuracy of this algorithm improves with the number of features. When
     tracking features across multiple frames (e.g. in a video), consider locating
-    the features across all features first (using tp.batch) before applying this function
+    the features across all frames first (using tp.batch) before applying this function
     (as opposed to applying this function for each individual frame).
     If f contains less than 100 features, f is returned as-is, due to lack of data.
     """
