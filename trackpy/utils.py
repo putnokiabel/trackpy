@@ -25,6 +25,12 @@ except ValueError:  # Probably a development version
 
 
 try:
+    is_pandas_since_210 = (LooseVersion(pd.__version__) >=
+                           LooseVersion('2.1.0'))
+except ValueError:  # Probably a development version
+    is_pandas_since_210 = True
+
+try:
     is_pandas_since_220 = (LooseVersion(pd.__version__) >=
                            LooseVersion('2.2.0'))
 except ValueError:  # Probably a development version
@@ -306,6 +312,14 @@ if is_pandas_since_023:
     pandas_concat = _pandas_concat_post_023
 else:
     pandas_concat = pd.concat
+
+
+def pandas_map(df, func):
+    """Apply func element-wise to a DataFrame (compat for pandas < 2.1)."""
+    if is_pandas_since_210:
+        return df.map(func)
+    else:
+        return df.applymap(func)
 
 
 def guess_pos_columns(f):

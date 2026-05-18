@@ -6,6 +6,7 @@ import warnings
 import logging
 
 import numpy as np
+from .utils import pandas_map
 
 try:
     from pims import plot_to_frame, plots_to_frame, normalize
@@ -640,7 +641,7 @@ def subpx_bias(f, pos_columns=None):
             pos_columns = ['x', 'y', 'z']
         else:
             pos_columns = ['x', 'y']
-    axlist = f[pos_columns].applymap(lambda x: x % 1).hist()
+    axlist = pandas_map(f[pos_columns], lambda x: x % 1).hist()
     return axlist
 
 @make_axes
