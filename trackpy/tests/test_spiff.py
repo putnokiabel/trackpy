@@ -112,10 +112,31 @@ class TestSpiffOption(StrictTestCase):
         explicit = tp.batch(frames, diameter=5, spiff=False)
         pd.testing.assert_frame_equal(baseline, explicit)
 
-    def test_batch_spiff_with_output_raises(self):
+    def test_batch_spiff_with_output_applies_per_frame(self):
+        # When `output` is specified, features cannot be pooled across
+        # frames, so SPIFF should fall back to per-frame application via
+        # the underlying `locate` call.
         expected, image = self._make_image(n=50)
-        with self.assertRaises(ValueError):
-            tp.batch([image], diameter=5, spiff=True, output=object())
+        frames = [image, image]
+        columns = default_pos_columns(2)
+
+        class Collector:
+            def __init__(self):
+                self.frames = []
+
+            def put(self, features):
+                self.frames.append(features)
+
+        baseline = Collector()
+        tp.batch(frames, diameter=5, output=baseline)
+        corrected = Collector()
+        tp.batch(frames, diameter=5, spiff=True, output=corrected)
+
+        baseline_all = pd.concat(baseline.frames, ignore_index=True)
+        corrected_all = pd.concat(corrected.frames, ignore_index=True)
+        assert len(baseline_all) == len(corrected_all)
+        assert (_subpix_bias(corrected_all, columns)
+                < _subpix_bias(baseline_all, columns))
 
 
 if __name__ == '__main__':

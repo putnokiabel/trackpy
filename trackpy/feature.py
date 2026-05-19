@@ -515,14 +515,20 @@ def batch(frames, diameter, output=None, meta=None, processes='auto',
         Furthermore it must return a DataFrame like ``features``.
     spiff : boolean or 'auto'
         Apply the SPIFF sub-pixel bias correction
-        (``trackpy.spiff.apply_spiff_correction``) to the combined set of
-        features after all frames have been processed. False by default.
+        (``trackpy.spiff.apply_spiff_correction``). False by default.
         If True, the correction is applied and a warning is emitted if
         there are too few features for a reliable correction. If
         ``'auto'``, the correction is applied silently when there are
-        enough features, and skipped otherwise. Pooling features across
-        many frames is the recommended way to use SPIFF. Note that this
-        argument is not compatible with ``output``.
+        enough features, and skipped otherwise.
+
+        When ``output`` is None, the correction is applied to the
+        combined set of features after all frames have been processed.
+        Pooling features across many frames is the recommended way to
+        use SPIFF. When ``output`` is specified, features cannot be
+        pooled because they are streamed to ``output`` one frame at a
+        time; in that case the correction is applied on a frame-by-frame
+        basis instead, which is less reliable but still better than no
+        correction.
     **kwargs :
         Keyword arguments that are passed to the wrapped `trackpy.locate`.
         Refer to its docstring for further details.
@@ -547,18 +553,14 @@ def batch(frames, diameter, output=None, meta=None, processes='auto',
     if "raw_image" in kwargs:
         raise KeyError("the argument `raw_image` musn't be in `kwargs`, it is "
                        "provided internally by `frames`")
-    if spiff and output is not None:
-        raise ValueError(
-            "The `spiff` correction is applied to the combined features "
-            "after all frames are processed, which is incompatible with "
-            "streaming `output`. Pass output=None to use spiff, or apply "
-            "trackpy.spiff.apply_spiff_correction yourself.")
     # Add required keyword argument
     kwargs["diameter"] = diameter
     # SPIFF is most accurate when applied to features pooled from all
-    # frames at once, so we override any per-frame spiff request and
-    # apply the correction below.
-    kwargs["spiff"] = False
+    # frames at once. When output is None we can pool, so override any
+    # per-frame spiff request and apply the correction below. When
+    # output is specified, pooling isn't possible, so fall back to
+    # applying the correction frame-by-frame inside locate().
+    kwargs["spiff"] = spiff if output is not None else False
 
     if meta:
         # Gather meta information and save as YAML in current directory.
