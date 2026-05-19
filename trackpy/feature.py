@@ -15,6 +15,7 @@ from .refine import refine_com, refine_com_arr
 from .masks import (binary_mask, N_binary_mask, r_squared_mask,
                     x_squared_masks, cosmask, sinmask)
 from .uncertainty import _static_error, measure_noise
+from .spiff import apply_spiff_correction
 import trackpy  # to get trackpy.__version__
 
 logger = logging.getLogger(__name__)
@@ -463,7 +464,6 @@ def locate(raw_image, diameter, minmass=None, maxsize=None, separation=None,
 
     # Optionally apply the SPIFF sub-pixel bias correction.
     if spiff:
-        from .spiff import apply_spiff_correction
         refined_coords = apply_spiff_correction(
             refined_coords, pos_columns=pos_columns,
             warn_if_insufficient=(spiff != 'auto'))
@@ -620,7 +620,6 @@ def batch(frames, diameter, output=None, meta=None, processes='auto',
         if len(all_features) > 0:
             result = pandas_concat(all_features).reset_index(drop=True)
             if spiff:
-                from .spiff import apply_spiff_correction
                 result = apply_spiff_correction(
                     result, warn_if_insufficient=(spiff != 'auto'))
             return result
