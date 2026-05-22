@@ -15,6 +15,7 @@ from .refine import refine_com, refine_com_arr
 from .masks import (binary_mask, N_binary_mask, r_squared_mask,
                     x_squared_masks, cosmask, sinmask)
 from .uncertainty import _static_error, measure_noise
+from .spiff import apply_spiff_correction
 import trackpy  # to get trackpy.__version__
 
 logger = logging.getLogger(__name__)
@@ -205,7 +206,7 @@ def locate(raw_image, diameter, minmass=None, maxsize=None, separation=None,
            noise_size=1, smoothing_size=None, threshold=None, invert=False,
            percentile=64, topn=None, preprocess=True, max_iterations=10,
            filter_before=None, filter_after=None,
-           characterize=True, engine='auto'):
+           characterize=True, engine='auto', spiff=False):
     """Locate Gaussian-like blobs of some approximate size in an image.
 
     Preprocess the image by performing a band pass and a threshold.
@@ -272,6 +273,15 @@ def locate(raw_image, diameter, minmass=None, maxsize=None, separation=None,
     characterize : boolean
         Compute "extras": eccentricity, signal, ep. True by default.
     engine : {'auto', 'python', 'numba'}
+    spiff : boolean or 'auto'
+        Apply the SPIFF sub-pixel bias correction
+        (``trackpy.spiff.apply_spiff_correction``) to the located features
+        before returning. False by default. If True, the correction is
+        applied and a warning is emitted if there are too few features for
+        a reliable correction. If ``'auto'``, the correction is applied
+        silently when there are enough features, and skipped otherwise.
+        Note that SPIFF generally works best when applied to features
+        pooled from many frames at once; see ``batch``.
 
     Returns
     -------
@@ -452,6 +462,12 @@ def locate(raw_image, diameter, minmass=None, maxsize=None, separation=None,
             ep = pd.DataFrame(ep, columns=['ep_' + cc for cc in pos_columns])
             refined_coords = pandas_concat([refined_coords, ep], axis=1)
 
+    # Optionally apply the SPIFF sub-pixel bias correction.
+    if spiff:
+        refined_coords = apply_spiff_correction(
+            refined_coords, pos_columns=pos_columns,
+            warn_if_insufficient=(spiff != 'auto'))
+
     # If this is a pims Frame object, it has a frame number.
     # Tag it on; this is helpful for parallelization.
     if hasattr(raw_image, 'frame_no') and raw_image.frame_no is not None:
@@ -460,7 +476,7 @@ def locate(raw_image, diameter, minmass=None, maxsize=None, separation=None,
 
 
 def batch(frames, diameter, output=None, meta=None, processes='auto',
-          after_locate=None, **kwargs):
+          after_locate=None, spiff=False, **kwargs):
     """Locate Gaussian-like blobs of some approximate size in a set of images.
 
     Preprocess the image by performing a band pass and a threshold.
@@ -497,6 +513,22 @@ def batch(frames, diameter, output=None, meta=None, processes='auto',
         - ``features``: a DataFrame containing the detected features.
 
         Furthermore it must return a DataFrame like ``features``.
+    spiff : boolean or 'auto'
+        Apply the SPIFF sub-pixel bias correction
+        (``trackpy.spiff.apply_spiff_correction``). False by default.
+        If True, the correction is applied and a warning is emitted if
+        there are too few features for a reliable correction. If
+        ``'auto'``, the correction is applied silently when there are
+        enough features, and skipped otherwise.
+
+        When ``output`` is None, the correction is applied to the
+        combined set of features after all frames have been processed.
+        Pooling features across many frames is the recommended way to
+        use SPIFF. When ``output`` is specified, features cannot be
+        pooled because they are streamed to ``output`` one frame at a
+        time; in that case the correction is applied on a frame-by-frame
+        basis instead, which is less reliable but still better than no
+        correction.
     **kwargs :
         Keyword arguments that are passed to the wrapped `trackpy.locate`.
         Refer to its docstring for further details.
@@ -523,6 +555,12 @@ def batch(frames, diameter, output=None, meta=None, processes='auto',
                        "provided internally by `frames`")
     # Add required keyword argument
     kwargs["diameter"] = diameter
+    # SPIFF is most accurate when applied to features pooled from all
+    # frames at once. When output is None we can pool, so override any
+    # per-frame spiff request and apply the correction below. When
+    # output is specified, pooling isn't possible, so fall back to
+    # applying the correction frame-by-frame inside locate().
+    kwargs["spiff"] = spiff if output is not None else False
 
     if meta:
         # Gather meta information and save as YAML in current directory.
@@ -582,7 +620,11 @@ def batch(frames, diameter, output=None, meta=None, processes='auto',
 
     if output is None:
         if len(all_features) > 0:
-            return pandas_concat(all_features).reset_index(drop=True)
+            result = pandas_concat(all_features).reset_index(drop=True)
+            if spiff:
+                result = apply_spiff_correction(
+                    result, warn_if_insufficient=(spiff != 'auto'))
+            return result
         else:  # return empty DataFrame
             warnings.warn("No maxima found in any frame.")
             return pd.DataFrame(columns=list(features.columns) + ['frame'])
