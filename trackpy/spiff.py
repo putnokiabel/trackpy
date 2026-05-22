@@ -38,13 +38,20 @@ def apply_spiff_correction(f: DataFrame, pos_columns=None,
     -----
     The algorithm used is inspired by "Analysis and correction of errors in
     nanoscale particle tracking using the Single-pixel interior filling function
-    (SPIFF) algorithm" by Yuval et al.
+    (SPIFF) algorithm" paper (see below).
     The accuracy of this algorithm improves with the number of features. When
     tracking features across multiple frames (e.g. in a video), consider locating
     the features across all frames first (using tp.batch) before applying this function
     (as opposed to applying this function for each individual frame).
     If f contains fewer than ``MIN_FEATURES`` features, f is returned as-is,
     due to lack of data.
+
+    Citations
+    -----
+    Yifat, Y., Sule, N., Lin, Y. et al.
+    Analysis and correction of errors in nanoscale particle tracking using the
+    Single-pixel interior filling function (SPIFF) algorithm. Sci Rep 7, 16553 (2017).
+    https://doi.org/10.1038/s41598-017-14166-6
     """
     if len(f) < MIN_FEATURES:
         if warn_if_insufficient:
